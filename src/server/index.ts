@@ -75,16 +75,16 @@ export async function startServer(preferredPort?: number): Promise<number> {
     });
   }
 
-  // Crea HTTP server e aggancia WebSocket
-  const httpServer = createServer(app);
-  initWebSocket(httpServer);
-
   // Prova a fare bind sulla porta, con retry
+  // NOTA: httpServer e WS vengono creati DOPO il bind riuscito
+  // per evitare che EADDRINUSE si propaghi al WebSocketServer
   const port = preferredPort || DEFAULT_PORT;
   return new Promise((resolve, reject) => {
     let attempt = 0;
 
     function tryPort(p: number) {
+      const httpServer = createServer(app);
+
       httpServer.once('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_RETRIES) {
           attempt++;
@@ -97,6 +97,8 @@ export async function startServer(preferredPort?: number): Promise<number> {
       });
 
       httpServer.listen(p, '127.0.0.1', () => {
+        // WebSocket inizializzato DOPO il bind riuscito
+        initWebSocket(httpServer);
         console.log(`[diffwatch] Server avviato su http://127.0.0.1:${p}`);
         console.log(`[diffwatch] WebSocket su ws://127.0.0.1:${p}/ws`);
         resolve(p);
