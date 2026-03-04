@@ -1,0 +1,47 @@
+{
+  "name": "diffwatch",
+  "version": "0.1.0",
+  "description": "Visualizzatore diff in tempo reale per Claude Code CLI — web UI con accept/reject e rollback",
+  "type": "module",
+  "bin": {
+    "diffwatch": "./dist/cli.js"
+  },
+  "main": "./dist/server.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "node scripts/build.js && node dist/cli.js start",
+    "start": "node dist/cli.js start"
+  },
+  "keywords": [
+    "claude-code",
+    "diff",
+    "code-review",
+    "real-time",
+    "hooks",
+    "cli"
+  ],
+  "author": "Juan Camilo Auriti",
+  "license": "MIT",
+  "dependencies": {
+    "diff": "^7.0.0",
+    "express": "^5.1.0",
+    "open": "^10.1.0",
+    "simple-git": "^3.27.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.5.0",
+    "diff2html": "^3.4.48",
+    "esbuild": "^0.25.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
