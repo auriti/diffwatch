@@ -2,3 +2,14 @@ node_modules/
 dist/
 *.tsbuildinfo
 .DS_Store
+.env
+*.log
+
+# File di audit sicurezza interni (non pubblicare)
+SECURITY-AUDIT-INDEX.md
+SECURITY-AUDIT-REPORT.md
+SECURITY-FIXES.md
+SECURITY-IMPLEMENTATION-CHECKLIST.md
+SECURITY-INCIDENT-RESPONSE.md
+SECURITY-SUMMARY.md
+scripts/verify-security-fixes.py
