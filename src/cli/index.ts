@@ -11,8 +11,9 @@
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { startServer } from '../server/index.js';
-import { installHooks, uninstallHooks, checkHooksInstalled } from '../installer/register.js';
 import { DEFAULT_PORT } from '../types.js';
+import { createProvider, getAvailableProviders, DEFAULT_PROVIDER } from '../providers/index.js';
+import type { HookProvider } from '../providers/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -28,22 +29,24 @@ async function main() {
   const portArg = args.find(a => a.startsWith('--port='));
   const port = portArg ? parseInt(portArg.split('=')[1], 10) : DEFAULT_PORT;
   const noOpen = args.includes('--no-open');
+  const providerArg = args.find(a => a.startsWith('--provider='));
+  const providerName = providerArg ? providerArg.split('=')[1] : DEFAULT_PROVIDER;
 
   switch (command) {
     case 'start':
-      await handleStart(port, noOpen);
+      await handleStart(port, noOpen, providerName);
       break;
 
     case 'install':
-      handleInstall();
+      handleInstall(providerName);
       break;
 
     case 'uninstall':
-      handleUninstall();
+      handleUninstall(providerName);
       break;
 
     case 'status':
-      handleStatus();
+      handleStatus(providerName);
       break;
 
     case '--help':
@@ -59,31 +62,84 @@ async function main() {
   }
 }
 
-async function handleStart(port: number, noOpen: boolean) {
+async function handleStart(port: number, noOpen: boolean, providerName: string) {
+  let provider: HookProvider;
+  try {
+    provider = createProvider(providerName);
+  } catch (err) {
+    console.error(`[diffwatch] ${err}`);
+    process.exit(1);
+  }
+
   console.log('');
   console.log('  ╔══════════════════════════════╗');
-  console.log('  ║       diffwatch v0.1.0       ║');
-  console.log('  ║  Real-time diff per Claude   ║');
+  console.log('  ║       diffwatch v0.3.0       ║');
+  console.log('  ║    Real-time diff viewer      ║');
   console.log('  ╚══════════════════════════════╝');
   console.log('');
+  console.log(`[diffwatch] Provider: ${provider.name} (${provider.mechanism})`);
 
-  // Verifica hooks installati, installa se necessario
-  if (!checkHooksInstalled()) {
-    console.log('[diffwatch] Hook non trovati. Installo automaticamente...');
-    const result = installHooks(HOOKS_DIR);
-    if (result.success) {
-      console.log('[diffwatch] ' + result.message);
-      console.log('[diffwatch] NOTA: riavvia Claude Code per attivare gli hook.');
+  // Per provider a hook: verifica installazione
+  if (provider.mechanism === 'hooks') {
+    if (!provider.isInstalled()) {
+      console.log('[diffwatch] Hook non trovati. Installo automaticamente...');
+      const result = provider.install(HOOKS_DIR);
+      if (result.success) {
+        console.log('[diffwatch] ' + result.message);
+        console.log('[diffwatch] NOTA: riavvia il tool AI per attivare gli hook.');
+      } else {
+        console.error('[diffwatch] ' + result.message);
+      }
+      console.log('');
     } else {
-      console.error('[diffwatch] ' + result.message);
+      console.log('[diffwatch] Hook gia\' registrati.');
     }
-    console.log('');
-  } else {
-    console.log('[diffwatch] Hook gia\' registrati.');
   }
 
   // Avvia il server
   const actualPort = await startServer(port);
+
+  // Per provider watcher/git: avvia rilevamento in-process
+  if (provider.mechanism !== 'hooks') {
+    const { store } = await import('../server/store.js');
+    const { broadcast } = await import('../server/websocket.js');
+    const { createUnifiedDiff } = await import('../diff/engine.js');
+
+    await provider.start({
+      port: actualPort,
+      workDir: process.cwd(),
+      onFileChange: async (event) => {
+        // Crea snapshot e invia alla UI (stesso flusso degli hook)
+        const snapshot = store.addSnapshot({
+          filePath: event.filePath,
+          contentBefore: event.contentBefore,
+          expectedAfter: event.contentAfter,
+          toolName: event.toolName,
+          toolInput: event.metadata || {},
+        });
+
+        const diff = createUnifiedDiff(event.filePath, event.contentBefore, event.contentAfter);
+        store.applySnapshot(event.filePath, event.contentAfter, diff);
+
+        broadcast({
+          type: 'change:applied',
+          changeId: snapshot.changeId,
+          filePath: event.filePath,
+          diff,
+          timestamp: snapshot.timestamp,
+        });
+      },
+      onLog: (msg) => console.log(`[diffwatch] ${msg}`),
+    });
+
+    // Cleanup al segnale di uscita
+    const cleanup = async () => {
+      await provider.stop();
+      process.exit(0);
+    };
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
+  }
 
   // Apri il browser
   if (!noOpen) {
@@ -97,24 +153,28 @@ async function handleStart(port: number, noOpen: boolean) {
   }
 
   console.log('');
-  console.log('[diffwatch] In attesa di modifiche da Claude Code...');
+  console.log(`[diffwatch] In attesa di modifiche (provider: ${provider.name})...`);
   console.log('[diffwatch] Premi Ctrl+C per fermare.');
 }
 
-function handleInstall() {
-  const result = installHooks(HOOKS_DIR);
+function handleInstall(providerName: string) {
+  const provider = createProvider(providerName);
+  const result = provider.install(HOOKS_DIR);
   if (result.success) {
     console.log('✓ ' + result.message);
-    console.log('');
-    console.log('NOTA: Riavvia Claude Code per attivare gli hook.');
+    if (provider.mechanism === 'hooks') {
+      console.log('');
+      console.log('NOTA: Riavvia il tool AI per attivare gli hook.');
+    }
   } else {
     console.error('✗ ' + result.message);
     process.exit(1);
   }
 }
 
-function handleUninstall() {
-  const result = uninstallHooks();
+function handleUninstall(providerName: string) {
+  const provider = createProvider(providerName);
+  const result = provider.uninstall();
   if (result.success) {
     console.log('✓ ' + result.message);
   } else {
@@ -123,15 +183,18 @@ function handleUninstall() {
   }
 }
 
-function handleStatus() {
-  const hooksInstalled = checkHooksInstalled();
+function handleStatus(providerName: string) {
+  const provider = createProvider(providerName);
 
   console.log('');
   console.log('diffwatch - stato:');
-  console.log(`  Hook registrati: ${hooksInstalled ? '✓ Si' : '✗ No'}`);
+  console.log(`  Provider:        ${provider.name} (${provider.mechanism})`);
+  console.log(`  Installato:      ${provider.isInstalled() ? '✓ Si' : '✗ No'}`);
+  console.log(`  Review gate:     ${provider.supportsReviewGate ? '✓ Supportato' : '✗ Non supportato'}`);
   console.log(`  Porta default:   ${DEFAULT_PORT}`);
   console.log(`  Hooks dir:       ${HOOKS_DIR}`);
   console.log('');
+  console.log(`  Provider disponibili: ${getAvailableProviders().join(', ')}`);
 
   // Verifica se il server è attivo
   checkServerRunning().then(running => {
@@ -154,28 +217,37 @@ async function checkServerRunning(): Promise<boolean> {
 }
 
 function printHelp() {
+  const providers = getAvailableProviders().join(', ');
   console.log(`
-diffwatch — Real-time diff viewer per Claude Code CLI
+diffwatch — Real-time diff viewer per AI coding tools
 
 Uso:
   diffwatch [comando] [opzioni]
 
 Comandi:
   start       Avvia il server e apre la UI nel browser (default)
-  install     Registra gli hook in Claude Code
-  uninstall   Rimuove gli hook da Claude Code
+  install     Registra gli hook per il provider selezionato
+  uninstall   Rimuove gli hook del provider
   status      Mostra lo stato corrente
   help        Mostra questo messaggio
 
 Opzioni:
-  --port=N    Porta del server (default: ${DEFAULT_PORT})
-  --no-open   Non aprire il browser automaticamente
+  --port=N          Porta del server (default: ${DEFAULT_PORT})
+  --no-open         Non aprire il browser automaticamente
+  --provider=NAME   Provider da usare (default: ${DEFAULT_PROVIDER})
+                    Disponibili: ${providers}
+
+Provider:
+  claude-code   Hook CLI PreToolUse/PostToolUse (supporta review gate)
+  cursor        File watcher in-process (Cursor, VS Code, editor generici)
+  aider         Git diff polling (Aider, tool basati su commit)
 
 Esempi:
-  diffwatch                    # Avvia con impostazioni default
-  diffwatch start --port=4000  # Avvia su porta 4000
-  diffwatch install            # Solo registra hook
-  diffwatch uninstall          # Rimuovi hook
+  diffwatch                              # Avvia con Claude Code (default)
+  diffwatch start --provider=cursor      # Avvia con file watcher
+  diffwatch start --provider=aider       # Avvia con git polling
+  diffwatch start --port=4000            # Porta custom
+  diffwatch install --provider=claude-code  # Solo registra hook
 `);
 }
 
