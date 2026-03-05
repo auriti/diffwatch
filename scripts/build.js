@@ -99,7 +99,18 @@ async function buildAll() {
   });
   console.log('  ✓ dist/ui/app.js');
 
-  // 6. CSS UI
+  // 6a. CSS vendor (diff2html + highlight.js) — bundlati offline
+  if (existsSync(join(ROOT, 'src/ui/styles/vendor.css'))) {
+    await build({
+      entryPoints: [join(ROOT, 'src/ui/styles/vendor.css')],
+      outfile: join(ROOT, 'dist/ui/vendor.css'),
+      bundle: true,
+      minify: true,
+    });
+    console.log('  ✓ dist/ui/vendor.css');
+  }
+
+  // 6b. CSS UI custom
   if (existsSync(join(ROOT, 'src/ui/styles/index.css'))) {
     await build({
       entryPoints: [join(ROOT, 'src/ui/styles/index.css')],

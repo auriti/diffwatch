@@ -1,0 +1,7 @@
+/**
+ * CSS vendor bundlati offline — diff2html + highlight.js
+ * Non più dipendenti da CDN esterni
+ */
+
+@import 'highlight.js/styles/github-dark.css';
+@import 'diff2html/bundles/css/diff2html.min.css';
