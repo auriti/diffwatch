@@ -5,10 +5,14 @@
 import React from 'react';
 import type { FileSnapshot } from '../../types.js';
 
+export type StatusFilter = 'all' | 'applied' | 'accepted' | 'rejected';
+
 interface FileListProps {
   changes: FileSnapshot[];
   selectedId: string | null;
   onSelect: (changeId: string) => void;
+  statusFilter: StatusFilter;
+  onFilterChange: (filter: StatusFilter) => void;
 }
 
 /** Estrai il nome breve dal path */
@@ -49,7 +53,18 @@ function toolIcon(toolName: string): string {
   return toolName === 'Write' ? '📝' : '✏️';
 }
 
-export function FileList({ changes, selectedId, onSelect }: FileListProps) {
+const FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'Tutti' },
+  { value: 'applied', label: 'Pending' },
+  { value: 'accepted', label: 'Accettati' },
+  { value: 'rejected', label: 'Rifiutati' },
+];
+
+export function FileList({ changes, selectedId, onSelect, statusFilter, onFilterChange }: FileListProps) {
+  const filtered = statusFilter === 'all'
+    ? changes
+    : changes.filter(c => c.status === statusFilter);
+
   if (changes.length === 0) {
     return (
       <aside className="dw-sidebar">
@@ -67,10 +82,21 @@ export function FileList({ changes, selectedId, onSelect }: FileListProps) {
   return (
     <aside className="dw-sidebar">
       <div className="dw-sidebar-header">
-        <h2>Modifiche ({changes.length})</h2>
+        <h2>Modifiche ({filtered.length}/{changes.length})</h2>
+      </div>
+      <div className="dw-filters">
+        {FILTERS.map(f => (
+          <button
+            key={f.value}
+            className={`dw-filter-btn ${statusFilter === f.value ? 'dw-filter-btn-active' : ''}`}
+            onClick={() => onFilterChange(f.value)}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
       <ul className="dw-file-list">
-        {changes.map(change => {
+        {filtered.map(change => {
           const badge = statusBadge(change.status);
           const isSelected = change.changeId === selectedId;
 
