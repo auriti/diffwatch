@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import { router } from './routes.js';
 import { initWebSocket } from './websocket.js';
+import { generateServerToken, authMiddleware } from './auth.js';
 import { DEFAULT_PORT, MAX_PORT_RETRIES } from '../types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -22,8 +23,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export async function startServer(preferredPort?: number): Promise<number> {
   const app = express();
 
+  // Genera token di autenticazione
+  const token = generateServerToken();
+
   // Middleware
   app.use(express.json({ limit: '10mb' }));
+  app.use(authMiddleware);
 
   // CORS per sviluppo locale
   app.use((_req, res, next) => {
@@ -101,6 +106,7 @@ export async function startServer(preferredPort?: number): Promise<number> {
         initWebSocket(httpServer);
         console.log(`[diffwatch] Server avviato su http://127.0.0.1:${p}`);
         console.log(`[diffwatch] WebSocket su ws://127.0.0.1:${p}/ws`);
+        console.log(`[diffwatch] Token auth salvato in ~/.diffwatch-token`);
         resolve(p);
       });
     }
