@@ -2,7 +2,7 @@
  * FileList — sidebar con lista file modificati
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import type { FileSnapshot } from '../../types.js';
 
 export type StatusFilter = 'all' | 'applied' | 'accepted' | 'rejected';
@@ -63,9 +63,11 @@ const FILTERS: { value: StatusFilter; label: string }[] = [
 ];
 
 export function FileList({ changes, selectedId, onSelect, statusFilter, onFilterChange }: FileListProps) {
-  const filtered = statusFilter === 'all'
-    ? changes
-    : changes.filter(c => c.status === statusFilter);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filtered = changes
+    .filter(c => statusFilter === 'all' || c.status === statusFilter)
+    .filter(c => !searchQuery || c.filePath.toLowerCase().includes(searchQuery.toLowerCase()));
 
   if (changes.length === 0) {
     return (
@@ -85,6 +87,14 @@ export function FileList({ changes, selectedId, onSelect, statusFilter, onFilter
     <aside className="dw-sidebar">
       <div className="dw-sidebar-header">
         <h2>Modifiche ({filtered.length}/{changes.length})</h2>
+      </div>
+      <div className="dw-file-search">
+        <input
+          type="text"
+          placeholder="Filtra per nome file..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+        />
       </div>
       <div className="dw-filters">
         {FILTERS.map(f => (
