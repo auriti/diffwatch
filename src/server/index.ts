@@ -11,6 +11,7 @@ import { existsSync } from 'fs';
 import { router } from './routes.js';
 import { initWebSocket } from './websocket.js';
 import { generateServerToken, authMiddleware } from './auth.js';
+import { rateLimitMiddleware } from './rate-limiter.js';
 import { DEFAULT_PORT, MAX_PORT_RETRIES } from '../types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,14 +29,23 @@ export async function startServer(preferredPort?: number): Promise<number> {
 
   // Middleware
   app.use(express.json({ limit: '10mb' }));
+  app.use(rateLimitMiddleware);
   app.use(authMiddleware);
 
-  // CORS per sviluppo locale
-  app.use((_req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
+  // CORS — whitelist solo localhost
+  const allowedOrigins = [
+    /^https?:\/\/localhost(:\d+)?$/,
+    /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+  ];
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.some(re => re.test(origin))) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    if (_req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
       res.sendStatus(200);
       return;
     }
