@@ -79,7 +79,7 @@ async function handleStart(port: number, noOpen: boolean, providerName: string) 
 
   console.log('');
   console.log('  ╔══════════════════════════════╗');
-  console.log('  ║       diffwatch v0.5.0       ║');
+  console.log('  ║       diffwatch v1.0.0       ║');
   console.log('  ║    Real-time diff viewer      ║');
   console.log('  ╚══════════════════════════════╝');
   console.log('');
@@ -224,7 +224,7 @@ async function checkServerRunning(): Promise<boolean> {
 
 function printVersion() {
   // Legge versione da package.json in fase di build (hardcoded)
-  console.log('diffwatch v0.5.0');
+  console.log('diffwatch v1.0.0');
 }
 
 function printHelp() {

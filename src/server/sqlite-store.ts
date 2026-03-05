@@ -161,8 +161,8 @@ export class SqliteStore {
 
     const count = this.db.prepare(`
       SELECT COUNT(*) as cnt FROM snapshots
-      WHERE file_path = ? AND timestamp > ? AND status IN ('applied', 'accepted')
-    `).get(snapshot.filePath, snapshot.timestamp) as { cnt: number };
+      WHERE file_path = ? AND change_id != ? AND timestamp >= ? AND status IN ('applied', 'accepted')
+    `).get(snapshot.filePath, changeId, snapshot.timestamp) as { cnt: number };
 
     return count.cnt > 0;
   }
