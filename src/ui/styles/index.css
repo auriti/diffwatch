@@ -424,12 +424,88 @@ html, body {
   white-space: nowrap;
 }
 
+.dw-content-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .dw-content-tool {
   font-size: 10px;
   color: var(--dw-muted);
   padding: 2px 8px;
   background: var(--dw-surface2);
   border-radius: var(--dw-radius);
+  margin-left: 8px;
+}
+
+/* --- Toggle buttons (diff format) --- */
+.dw-btn-toggle {
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--dw-border);
+  border-radius: var(--dw-radius);
+  background: transparent;
+  color: var(--dw-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.dw-btn-toggle:hover {
+  color: var(--dw-text);
+  border-color: var(--dw-overlay);
+}
+
+.dw-btn-toggle-active {
+  color: var(--dw-bg);
+  background: var(--dw-mauve);
+  border-color: var(--dw-mauve);
+}
+
+/* --- Filtro file path --- */
+.dw-file-search {
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--dw-border);
+}
+
+.dw-file-search input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  background: var(--dw-bg);
+  border: 1px solid var(--dw-border);
+  border-radius: var(--dw-radius);
+  color: var(--dw-text);
+  outline: none;
+}
+
+.dw-file-search input:focus {
+  border-color: var(--dw-mauve);
+}
+
+.dw-file-search input::placeholder {
+  color: var(--dw-muted);
+}
+
+/* --- Keyboard shortcuts hint --- */
+.dw-shortcuts-hint {
+  padding: 6px 16px;
+  font-size: 9px;
+  color: var(--dw-muted);
+  border-top: 1px solid var(--dw-border);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dw-shortcut-key {
+  display: inline-block;
+  padding: 0 4px;
+  background: var(--dw-surface2);
+  border-radius: 3px;
+  font-weight: 600;
+  color: var(--dw-subtext);
 }
 
 /* --- Diff viewer --- */
@@ -452,6 +528,24 @@ html, body {
   white-space: pre-wrap;
   word-break: break-all;
   color: var(--dw-subtext);
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.dw-diff-large-warning {
+  padding: 16px;
+}
+
+.dw-diff-large-warning p {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--dw-yellow);
+}
+
+.dw-btn-load-full {
+  margin-top: 8px;
+  background: rgba(203, 166, 247, 0.15);
+  color: var(--dw-mauve);
 }
 
 /* --- Action bar --- */
