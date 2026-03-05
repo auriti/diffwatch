@@ -176,6 +176,95 @@ html, body {
   color: var(--dw-red);
 }
 
+/* --- Review gate bar --- */
+.dw-review-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(249, 226, 175, 0.08);
+  border-bottom: 2px solid var(--dw-yellow);
+  flex-shrink: 0;
+  animation: dw-review-glow 2s ease-in-out infinite;
+}
+
+@keyframes dw-review-glow {
+  0%, 100% { border-bottom-color: var(--dw-yellow); }
+  50% { border-bottom-color: rgba(249, 226, 175, 0.4); }
+}
+
+.dw-review-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.dw-review-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dw-yellow);
+  animation: dw-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dw-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--dw-yellow); }
+  50% { opacity: 0.4; box-shadow: 0 0 8px var(--dw-yellow); }
+}
+
+.dw-review-label {
+  font-weight: 700;
+  color: var(--dw-yellow);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.dw-review-file {
+  color: var(--dw-text);
+  font-weight: 600;
+}
+
+.dw-review-tool {
+  color: var(--dw-muted);
+  font-size: 10px;
+  padding: 1px 6px;
+  background: var(--dw-surface2);
+  border-radius: var(--dw-radius);
+}
+
+.dw-review-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.dw-btn-review-approve {
+  background: rgba(166, 227, 161, 0.2);
+  color: var(--dw-green);
+  font-weight: 700;
+}
+
+.dw-btn-review-approve:hover {
+  background: rgba(166, 227, 161, 0.35);
+}
+
+.dw-btn-review-reject {
+  background: rgba(243, 139, 168, 0.2);
+  color: var(--dw-red);
+  font-weight: 700;
+}
+
+.dw-btn-review-reject:hover {
+  background: rgba(243, 139, 168, 0.35);
+}
+
+.dw-badge-review {
+  background: rgba(249, 226, 175, 0.2);
+  color: var(--dw-yellow);
+  animation: dw-pulse 1.5s ease-in-out infinite;
+}
+
 /* --- Main layout --- */
 .dw-main {
   display: flex;

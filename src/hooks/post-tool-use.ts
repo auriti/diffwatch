@@ -10,23 +10,23 @@ import { runHook, httpPost } from './utils.js';
 
 runHook('post-tool-use', async (input) => {
   const toolName = input.tool_name;
-  if (!toolName || (toolName !== 'Edit' && toolName !== 'Write')) return;
+  if (!toolName || (toolName !== 'Edit' && toolName !== 'Write')) return 0;
 
   const toolInput = input.tool_input;
-  if (!toolInput) return;
+  if (!toolInput) return 0;
 
   const filePath = toolInput.file_path;
-  if (!filePath) return;
+  if (!filePath) return 0;
 
   // Leggi il contenuto attuale del file (dopo la modifica di Claude)
-  if (!existsSync(filePath)) return;
+  if (!existsSync(filePath)) return 0;
 
   let contentAfter: string;
   try {
     contentAfter = readFileSync(filePath, 'utf-8');
   } catch {
     // File non leggibile — ignora
-    return;
+    return 0;
   }
 
   // Notifica il server con il contenuto reale
@@ -34,4 +34,6 @@ runHook('post-tool-use', async (input) => {
     filePath,
     contentAfter,
   });
+
+  return 0;
 });

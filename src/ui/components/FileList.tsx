@@ -37,6 +37,8 @@ function statusBadge(status: string): { className: string; label: string } {
   switch (status) {
     case 'preview':
       return { className: 'dw-badge dw-badge-preview', label: 'preview' };
+    case 'pending_review':
+      return { className: 'dw-badge dw-badge-review', label: 'review' };
     case 'applied':
       return { className: 'dw-badge dw-badge-pending', label: 'pending' };
     case 'accepted':

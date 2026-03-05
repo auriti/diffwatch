@@ -12,6 +12,7 @@ import { FileList } from './components/FileList.js';
 import { DiffViewer } from './components/DiffViewer.js';
 import { ActionBar } from './components/ActionBar.js';
 import { BatchActions } from './components/BatchActions.js';
+import { ReviewBar } from './components/ReviewBar.js';
 
 function App() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -21,17 +22,30 @@ function App() {
     selectedId,
     selectedChange,
     pendingCount,
+    reviewCount,
     stats,
     accept,
     reject,
     acceptAll,
     rejectAll,
+    approveReview,
+    rejectReview,
     select,
   } = useChanges(onMessage);
 
+  // Trova la prima review in attesa (la più recente)
+  const pendingReview = changes.find(c => c.status === 'pending_review') || null;
+
   return (
     <div className="dw-app">
-      <Header connected={connected} pendingCount={pendingCount} stats={stats} />
+      <Header connected={connected} pendingCount={pendingCount} reviewCount={reviewCount} stats={stats} />
+
+      {/* Barra review gate — visibile solo quando c'è una review in attesa */}
+      <ReviewBar
+        change={pendingReview}
+        onApprove={approveReview}
+        onReject={rejectReview}
+      />
 
       <div className="dw-main">
         <FileList

@@ -9,7 +9,7 @@ import { store } from './store.js';
 import { broadcast } from './websocket.js';
 import { createUnifiedDiff } from '../diff/engine.js';
 import { rollbackFile } from '../diff/rollback.js';
-import type { SnapshotRequest, AppliedRequest, RollbackRequest, AcceptRequest } from '../types.js';
+import type { SnapshotRequest, AppliedRequest, RollbackRequest, AcceptRequest, ReviewDecision } from '../types.js';
 import { isPathAllowed } from './path-validator.js';
 
 export const router = Router();
@@ -220,6 +220,116 @@ router.post('/api/accept', (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[diffwatch] Errore accept:', err);
+    res.status(500).json({ error: 'Errore interno' });
+  }
+});
+
+/**
+ * POST /api/review — Invia una richiesta di review (chiamato dal hook PreToolUse in review mode)
+ * Crea snapshot + mette in stato pending_review
+ */
+router.post('/api/review', (req, res) => {
+  try {
+    const body = req.body as SnapshotRequest;
+
+    if (!body.filePath || body.contentBefore === undefined) {
+      res.status(400).json({ error: 'filePath e contentBefore richiesti' });
+      return;
+    }
+
+    if (!isPathAllowed(body.filePath)) {
+      res.status(403).json({ error: 'SECURITY: percorso file non consentito' });
+      return;
+    }
+
+    // Crea snapshot
+    const snapshot = store.addSnapshot({
+      filePath: body.filePath,
+      contentBefore: body.contentBefore,
+      expectedAfter: body.expectedAfter || '',
+      toolName: body.toolName || 'Edit',
+      toolInput: body.toolInput || {},
+    });
+
+    // Genera diff preview
+    if (body.expectedAfter) {
+      snapshot.unifiedDiff = createUnifiedDiff(
+        body.filePath,
+        body.contentBefore,
+        body.expectedAfter
+      );
+    }
+
+    // Metti in stato pending_review
+    store.requestReview(snapshot.changeId);
+
+    // Notifica UI via WebSocket
+    broadcast({
+      type: 'review:request',
+      changeId: snapshot.changeId,
+      filePath: snapshot.filePath,
+      diff: snapshot.unifiedDiff || '',
+      toolName: snapshot.toolName,
+      timestamp: snapshot.timestamp,
+    });
+
+    res.json({ changeId: snapshot.changeId });
+  } catch (err) {
+    console.error('[diffwatch] Errore review:', err);
+    res.status(500).json({ error: 'Errore interno' });
+  }
+});
+
+/**
+ * GET /api/review/:changeId — Poll per decisione review (chiamato dal hook in attesa)
+ */
+router.get('/api/review/:changeId', (req, res) => {
+  try {
+    const { changeId } = req.params;
+    const snapshot = store.getSnapshot(changeId);
+
+    if (!snapshot) {
+      res.status(404).json({ error: 'Snapshot non trovato' });
+      return;
+    }
+
+    const decision = store.getReviewDecision(changeId);
+    res.json({ changeId, decision });
+  } catch (err) {
+    console.error('[diffwatch] Errore review poll:', err);
+    res.status(500).json({ error: 'Errore interno' });
+  }
+});
+
+/**
+ * POST /api/review/:changeId/decide — Registra decisione review (chiamato dalla UI)
+ */
+router.post('/api/review/:changeId/decide', (req, res) => {
+  try {
+    const { changeId } = req.params;
+    const { decision } = req.body as { decision: ReviewDecision };
+
+    if (!decision || !['approved', 'rejected'].includes(decision)) {
+      res.status(400).json({ error: 'decision deve essere "approved" o "rejected"' });
+      return;
+    }
+
+    const snapshot = store.setReviewDecision(changeId, decision);
+    if (!snapshot) {
+      res.status(404).json({ error: 'Snapshot non trovato o non in pending_review' });
+      return;
+    }
+
+    // Notifica tutti i client
+    broadcast({
+      type: 'review:decided',
+      changeId,
+      decision,
+    });
+
+    res.json({ success: true, decision });
+  } catch (err) {
+    console.error('[diffwatch] Errore review decide:', err);
     res.status(500).json({ error: 'Errore interno' });
   }
 });

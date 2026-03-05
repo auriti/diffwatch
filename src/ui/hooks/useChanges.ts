@@ -16,6 +16,8 @@ interface ChangesState {
 type ChangesAction =
   | { type: 'LOAD_ALL'; changes: FileSnapshot[] }
   | { type: 'ADD_PREVIEW'; change: Partial<FileSnapshot> & { changeId: string } }
+  | { type: 'ADD_REVIEW'; change: Partial<FileSnapshot> & { changeId: string } }
+  | { type: 'REVIEW_DECIDED'; changeId: string; decision: string }
   | { type: 'APPLY'; changeId: string; diff: string }
   | { type: 'ACCEPT'; changeId: string }
   | { type: 'REJECT'; changeId: string }
@@ -51,6 +53,36 @@ function changesReducer(state: ChangesState, action: ChangesAction): ChangesStat
       };
       changes.set(action.change.changeId, snapshot);
       return { changes, selectedId: action.change.changeId };
+    }
+
+    case 'ADD_REVIEW': {
+      const existing = changes.get(action.change.changeId);
+      const snapshot: FileSnapshot = existing ? { ...existing, ...action.change, status: 'pending_review' } : {
+        changeId: action.change.changeId,
+        filePath: action.change.filePath || '',
+        contentBefore: '',
+        contentAfter: null,
+        toolName: (action.change.toolName as 'Edit' | 'Write') || 'Edit',
+        toolInput: {},
+        timestamp: action.change.timestamp || Date.now(),
+        status: 'pending_review',
+        unifiedDiff: action.change.unifiedDiff || null,
+        reviewDecision: null,
+      };
+      changes.set(action.change.changeId, snapshot);
+      return { changes, selectedId: action.change.changeId };
+    }
+
+    case 'REVIEW_DECIDED': {
+      const snapshot = changes.get(action.changeId);
+      if (snapshot) {
+        changes.set(action.changeId, {
+          ...snapshot,
+          reviewDecision: action.decision as FileSnapshot['reviewDecision'],
+          status: action.decision === 'rejected' ? 'rejected' : snapshot.status,
+        });
+      }
+      return { ...state, changes };
     }
 
     case 'APPLY': {
@@ -135,6 +167,23 @@ export function useChanges(onMessage: (handler: (msg: WsMessage) => void) => voi
         case 'change:rejected':
           dispatch({ type: 'REJECT', changeId: msg.changeId });
           break;
+
+        case 'review:request':
+          dispatch({
+            type: 'ADD_REVIEW',
+            change: {
+              changeId: msg.changeId,
+              filePath: msg.filePath,
+              toolName: msg.toolName as 'Edit' | 'Write',
+              unifiedDiff: msg.diff,
+              timestamp: msg.timestamp,
+            },
+          });
+          break;
+
+        case 'review:decided':
+          dispatch({ type: 'REVIEW_DECIDED', changeId: msg.changeId, decision: msg.decision });
+          break;
       }
     });
   }, [onMessage]);
@@ -172,6 +221,23 @@ export function useChanges(onMessage: (handler: (msg: WsMessage) => void) => voi
     }
   }, []);
 
+  // Azioni review gate
+  const approveReview = useCallback(async (changeId: string) => {
+    await fetch(`/api/review/${changeId}/decide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'approved' }),
+    });
+  }, []);
+
+  const rejectReview = useCallback(async (changeId: string) => {
+    await fetch(`/api/review/${changeId}/decide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision: 'rejected' }),
+    });
+  }, []);
+
   const select = useCallback((changeId: string | null) => {
     dispatch({ type: 'SELECT', changeId });
   }, []);
@@ -181,6 +247,7 @@ export function useChanges(onMessage: (handler: (msg: WsMessage) => void) => voi
     .sort((a, b) => b.timestamp - a.timestamp);
 
   const pendingCount = changesList.filter(c => c.status === 'applied').length;
+  const reviewCount = changesList.filter(c => c.status === 'pending_review').length;
 
   // Statistiche sessione
   const stats = {
@@ -196,11 +263,14 @@ export function useChanges(onMessage: (handler: (msg: WsMessage) => void) => voi
     selectedId: state.selectedId,
     selectedChange: state.selectedId ? state.changes.get(state.selectedId) || null : null,
     pendingCount,
+    reviewCount,
     stats,
     accept,
     reject,
     acceptAll,
     rejectAll,
+    approveReview,
+    rejectReview,
     select,
   };
 }

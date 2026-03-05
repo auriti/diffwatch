@@ -9,8 +9,8 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import type { HookInput } from '../types.js';
-import { HOOK_HTTP_TIMEOUT_MS, DEFAULT_PORT } from '../types.js';
+import type { HookInput, ReviewDecision } from '../types.js';
+import { HOOK_HTTP_TIMEOUT_MS, DEFAULT_PORT, REVIEW_TIMEOUT_MS, REVIEW_POLL_INTERVAL_MS } from '../types.js';
 
 /** Legge il token di autenticazione dal file */
 function readAuthToken(): string | null {
@@ -95,19 +95,79 @@ export async function httpPost(path: string, body: Record<string, unknown>): Pro
 }
 
 /**
- * Wrapper sicuro per eseguire un hook con gestione errori.
- * Esce sempre con 0 (non blocca mai Claude Code in review mode).
+ * Controlla se il review gate è attivo (via env var DIFFWATCH_REVIEW=1)
+ */
+export function isReviewMode(): boolean {
+  return process.env.DIFFWATCH_REVIEW === '1' || process.env.DIFFWATCH_REVIEW === 'true';
+}
+
+/**
+ * HTTP GET al server diffwatch.
+ */
+export async function httpGet<T>(path: string): Promise<T | null> {
+  const port = process.env.DIFFWATCH_PORT || String(DEFAULT_PORT);
+  const url = `http://127.0.0.1:${port}${path}`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), HOOK_HTTP_TIMEOUT_MS);
+
+    const headers: Record<string, string> = {};
+    const token = readAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, { headers, signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+    return await res.json() as T;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Attende la decisione review dal server (polling).
+ * Ritorna la decisione o 'timeout' se scade il tempo.
+ */
+export async function waitForReviewDecision(changeId: string): Promise<ReviewDecision> {
+  const timeoutMs = parseInt(process.env.DIFFWATCH_REVIEW_TIMEOUT_MS || String(REVIEW_TIMEOUT_MS), 10);
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    const result = await httpGet<{ changeId: string; decision: ReviewDecision | null }>(
+      `/api/review/${changeId}`
+    );
+
+    if (result?.decision) {
+      return result.decision;
+    }
+
+    // Attendi prima di riprovare
+    await new Promise(resolve => setTimeout(resolve, REVIEW_POLL_INTERVAL_MS));
+  }
+
+  // Timeout: auto-approva per non bloccare Claude indefinitamente
+  return 'timeout';
+}
+
+/**
+ * Wrapper sicuro per eseguire un hook.
+ * Exit 0 = permetti tool, Exit 2 = blocca tool (review rejected).
+ * In caso di errore esce sempre con 0 (non blocca Claude).
  */
 export async function runHook(
   name: string,
-  handler: (input: HookInput) => Promise<void>
+  handler: (input: HookInput) => Promise<number>
 ): Promise<void> {
   try {
     const input = await readStdin();
-    await handler(input);
-    process.exit(0);
+    const exitCode = await handler(input);
+    process.exit(exitCode);
   } catch (error) {
-    // Log su stderr (visibile solo in debug), mai bloccare Claude
+    // Log su stderr (visibile solo in debug), mai bloccare Claude per errori
     process.stderr.write(`[diffwatch:${name}] Errore: ${error}\n`);
     process.exit(0);
   }

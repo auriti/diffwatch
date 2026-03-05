@@ -4,7 +4,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import type { FileSnapshot, SnapshotStatus } from '../types.js';
+import type { FileSnapshot, SnapshotStatus, ReviewDecision } from '../types.js';
 
 export class SnapshotStore {
   /** Tutti gli snapshot, indicizzati per changeId */
@@ -35,6 +35,7 @@ export class SnapshotStore {
       timestamp: Date.now(),
       status: 'preview',
       unifiedDiff: null,
+      reviewDecision: null,
     };
 
     this.snapshots.set(changeId, snapshot);
@@ -137,6 +138,40 @@ export class SnapshotStore {
     }
 
     return false;
+  }
+
+  /**
+   * Mette uno snapshot in stato pending_review (per il review gate)
+   */
+  requestReview(changeId: string): FileSnapshot | null {
+    const snapshot = this.snapshots.get(changeId);
+    if (!snapshot) return null;
+    if (snapshot.status !== 'preview') return null;
+    snapshot.status = 'pending_review';
+    return snapshot;
+  }
+
+  /**
+   * Registra la decisione del review gate
+   */
+  setReviewDecision(changeId: string, decision: ReviewDecision): FileSnapshot | null {
+    const snapshot = this.snapshots.get(changeId);
+    if (!snapshot) return null;
+    if (snapshot.status !== 'pending_review') return null;
+    snapshot.reviewDecision = decision;
+    if (decision === 'rejected') {
+      snapshot.status = 'rejected';
+    }
+    return snapshot;
+  }
+
+  /**
+   * Ritorna la decisione review per un changeId (null se non ancora deciso)
+   */
+  getReviewDecision(changeId: string): ReviewDecision | null {
+    const snapshot = this.snapshots.get(changeId);
+    if (!snapshot) return null;
+    return snapshot.reviewDecision;
   }
 
   /**

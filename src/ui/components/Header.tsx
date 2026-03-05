@@ -21,10 +21,11 @@ interface GitInfo {
 interface HeaderProps {
   connected: boolean;
   pendingCount: number;
+  reviewCount?: number;
   stats?: SessionStats;
 }
 
-export function Header({ connected, pendingCount, stats }: HeaderProps) {
+export function Header({ connected, pendingCount, reviewCount, stats }: HeaderProps) {
   const [gitInfo, setGitInfo] = useState<GitInfo | null>(null);
 
   useEffect(() => {
@@ -62,6 +63,11 @@ export function Header({ connected, pendingCount, stats }: HeaderProps) {
         )}
       </div>
       <div className="dw-header-right">
+        {(reviewCount ?? 0) > 0 && (
+          <span className="dw-badge dw-badge-review">
+            {reviewCount} review
+          </span>
+        )}
         {pendingCount > 0 && (
           <span className="dw-badge dw-badge-pending">
             {pendingCount} pending

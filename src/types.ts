@@ -5,7 +5,10 @@
 
 // --- Stato snapshot ---
 
-export type SnapshotStatus = 'preview' | 'applied' | 'accepted' | 'rejected';
+export type SnapshotStatus = 'preview' | 'pending_review' | 'applied' | 'accepted' | 'rejected';
+
+/** Decisione review gate */
+export type ReviewDecision = 'approved' | 'rejected' | 'timeout';
 
 export interface FileSnapshot {
   /** ID univoco della modifica */
@@ -26,6 +29,8 @@ export interface FileSnapshot {
   status: SnapshotStatus;
   /** Diff in formato unified (generato dopo applied) */
   unifiedDiff: string | null;
+  /** Decisione review gate (null se non in review) */
+  reviewDecision: ReviewDecision | null;
 }
 
 // --- Input hook Claude Code ---
@@ -69,6 +74,19 @@ export interface AcceptRequest {
   changeId: string;
 }
 
+export interface ReviewRequest {
+  filePath: string;
+  contentBefore: string;
+  expectedAfter: string;
+  toolName: 'Edit' | 'Write';
+  toolInput: Record<string, unknown>;
+}
+
+export interface ReviewResponse {
+  changeId: string;
+  decision: ReviewDecision | null;
+}
+
 // --- WebSocket Messages (server → browser) ---
 
 export type WsMessage =
@@ -76,6 +94,8 @@ export type WsMessage =
   | { type: 'change:applied'; changeId: string; filePath: string; diff: string; timestamp: number }
   | { type: 'change:accepted'; changeId: string }
   | { type: 'change:rejected'; changeId: string }
+  | { type: 'review:request'; changeId: string; filePath: string; diff: string; toolName: string; timestamp: number }
+  | { type: 'review:decided'; changeId: string; decision: ReviewDecision }
   | { type: 'connection'; status: 'connected' };
 
 // --- Costanti ---
@@ -85,3 +105,8 @@ export const MAX_PORT_RETRIES = 5;
 export const HOOK_HTTP_TIMEOUT_MS = 2000;
 export const WS_RECONNECT_BASE_MS = 1000;
 export const WS_RECONNECT_MAX_MS = 8000;
+
+/** Timeout review gate in ms (default 30s, configurabile via DIFFWATCH_REVIEW_TIMEOUT_MS) */
+export const REVIEW_TIMEOUT_MS = 30_000;
+/** Intervallo polling review in ms */
+export const REVIEW_POLL_INTERVAL_MS = 500;
