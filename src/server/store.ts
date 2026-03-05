@@ -153,7 +153,44 @@ export class SnapshotStore {
   get pendingCount(): number {
     return this.getByStatus('applied').length;
   }
+
+  /**
+   * Rimuove snapshot scaduti (accepted/rejected più vecchi di ttlMs).
+   * Snapshot applied (pending) non vengono mai rimossi.
+   */
+  cleanup(ttlMs: number = 3_600_000): number {
+    const cutoff = Date.now() - ttlMs;
+    let removed = 0;
+
+    for (const [changeId, snapshot] of this.snapshots) {
+      if (
+        (snapshot.status === 'accepted' || snapshot.status === 'rejected') &&
+        snapshot.timestamp < cutoff
+      ) {
+        this.snapshots.delete(changeId);
+        // Rimuovi dall'indice per file
+        const fileChanges = this.byFile.get(snapshot.filePath);
+        if (fileChanges) {
+          const idx = fileChanges.indexOf(changeId);
+          if (idx !== -1) fileChanges.splice(idx, 1);
+          if (fileChanges.length === 0) this.byFile.delete(snapshot.filePath);
+        }
+        removed++;
+      }
+    }
+
+    return removed;
+  }
 }
 
 /** Istanza singleton dello store */
 export const store = new SnapshotStore();
+
+/** Cleanup automatico ogni 5 minuti */
+const TTL_MS = parseInt(process.env.DIFFWATCH_TTL_MS || '3600000', 10);
+setInterval(() => {
+  const removed = store.cleanup(TTL_MS);
+  if (removed > 0) {
+    console.log(`[diffwatch] Cleanup: rimossi ${removed} snapshot scaduti`);
+  }
+}, 300_000);
