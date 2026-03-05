@@ -1,6 +1,6 @@
 {
   "name": "@auriti/diffwatch",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "Visualizzatore diff in tempo reale per Claude Code CLI — web UI con accept/reject e rollback",
   "type": "module",
   "bin": {

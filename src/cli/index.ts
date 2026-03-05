@@ -49,6 +49,12 @@ async function main() {
       handleStatus(providerName);
       break;
 
+    case '--version':
+    case '-v':
+    case 'version':
+      printVersion();
+      break;
+
     case '--help':
     case '-h':
     case 'help':
@@ -73,7 +79,7 @@ async function handleStart(port: number, noOpen: boolean, providerName: string) 
 
   console.log('');
   console.log('  ╔══════════════════════════════╗');
-  console.log('  ║       diffwatch v0.3.0       ║');
+  console.log('  ║       diffwatch v0.5.0       ║');
   console.log('  ║    Real-time diff viewer      ║');
   console.log('  ╚══════════════════════════════╝');
   console.log('');
@@ -216,6 +222,11 @@ async function checkServerRunning(): Promise<boolean> {
   }
 }
 
+function printVersion() {
+  // Legge versione da package.json in fase di build (hardcoded)
+  console.log('diffwatch v0.5.0');
+}
+
 function printHelp() {
   const providers = getAvailableProviders().join(', ');
   console.log(`
@@ -229,6 +240,7 @@ Comandi:
   install     Registra gli hook per il provider selezionato
   uninstall   Rimuove gli hook del provider
   status      Mostra lo stato corrente
+  version     Mostra la versione
   help        Mostra questo messaggio
 
 Opzioni:
