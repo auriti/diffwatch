@@ -74,6 +74,31 @@ html, body {
   color: var(--dw-muted);
 }
 
+.dw-header-center {
+  display: flex;
+  align-items: center;
+}
+
+.dw-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--dw-subtext);
+}
+
+.dw-stat-sep {
+  color: var(--dw-muted);
+}
+
+.dw-stat-accepted {
+  color: var(--dw-green);
+}
+
+.dw-stat-rejected {
+  color: var(--dw-red);
+}
+
 .dw-header-right {
   display: flex;
   align-items: center;
@@ -156,6 +181,35 @@ html, body {
 .dw-sidebar-header {
   padding: 12px 16px;
   border-bottom: 1px solid var(--dw-border);
+}
+
+.dw-filters {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--dw-border);
+}
+
+.dw-filter-btn {
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--dw-border);
+  border-radius: var(--dw-radius);
+  background: transparent;
+  color: var(--dw-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.dw-filter-btn:hover {
+  color: var(--dw-text);
+  border-color: var(--dw-overlay);
+}
+
+.dw-filter-btn-active {
+  color: var(--dw-bg);
+  background: var(--dw-blue);
+  border-color: var(--dw-blue);
 }
 
 .dw-sidebar-header h2 {

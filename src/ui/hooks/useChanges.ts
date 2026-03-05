@@ -182,11 +182,21 @@ export function useChanges(onMessage: (handler: (msg: WsMessage) => void) => voi
 
   const pendingCount = changesList.filter(c => c.status === 'applied').length;
 
+  // Statistiche sessione
+  const stats = {
+    total: changesList.length,
+    pending: pendingCount,
+    accepted: changesList.filter(c => c.status === 'accepted').length,
+    rejected: changesList.filter(c => c.status === 'rejected').length,
+    files: new Set(changesList.map(c => c.filePath)).size,
+  };
+
   return {
     changes: changesList,
     selectedId: state.selectedId,
     selectedChange: state.selectedId ? state.changes.get(state.selectedId) || null : null,
     pendingCount,
+    stats,
     accept,
     reject,
     acceptAll,
