@@ -4,9 +4,15 @@
  * NOTA sicurezza: diff2html usa internamente innerHTML per il rendering.
  * Il contenuto è generato dal nostro diff engine (non input utente web),
  * quindi il rischio XSS è trascurabile. Il fallback usa textContent.
+ *
+ * Per diff grandi (>500 righe) mostra fallback testuale con
+ * opzione di caricare il rendering completo su richiesta.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+
+/** Soglia righe per lazy loading */
+const LARGE_DIFF_THRESHOLD = 500;
 
 interface DiffViewerProps {
   /** Stringa unified diff */
@@ -17,9 +23,19 @@ interface DiffViewerProps {
 
 export function DiffViewer({ diff, outputFormat = 'side-by-side' }: DiffViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [forceRender, setForceRender] = useState(false);
+
+  // Reset forceRender quando cambia il diff
+  useEffect(() => {
+    setForceRender(false);
+  }, [diff]);
+
+  const lineCount = diff ? diff.split('\n').length : 0;
+  const isLargeDiff = lineCount > LARGE_DIFF_THRESHOLD;
 
   useEffect(() => {
     if (!containerRef.current || !diff) return;
+    if (isLargeDiff && !forceRender) return;
 
     // Importa diff2html dinamicamente (bundled via esbuild)
     import('diff2html').then(({ html: diff2htmlHtml }) => {
@@ -53,12 +69,30 @@ export function DiffViewer({ diff, outputFormat = 'side-by-side' }: DiffViewerPr
         containerRef.current.appendChild(pre);
       }
     });
-  }, [diff, outputFormat]);
+  }, [diff, outputFormat, forceRender, isLargeDiff]);
 
   if (!diff) {
     return (
       <div className="dw-diff-empty">
         <p>Seleziona una modifica dalla lista per vedere il diff</p>
+      </div>
+    );
+  }
+
+  // Lazy loading per diff grandi
+  if (isLargeDiff && !forceRender) {
+    return (
+      <div className="dw-diff-container">
+        <div className="dw-diff-large-warning">
+          <p>Diff grande ({lineCount} righe)</p>
+          <pre className="dw-diff-fallback">{diff}</pre>
+          <button
+            className="dw-btn dw-btn-load-full"
+            onClick={() => setForceRender(true)}
+          >
+            Carica rendering completo
+          </button>
+        </div>
       </div>
     );
   }
