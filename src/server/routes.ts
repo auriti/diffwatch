@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { execFileSync } from 'child_process';
 import { store } from './store.js';
 import { broadcast } from './websocket.js';
 import { createUnifiedDiff } from '../diff/engine.js';
@@ -284,4 +285,23 @@ router.get('/api/changes', (_req, res) => {
     console.error('[diffwatch] Errore changes:', err);
     res.status(500).json({ error: 'Errore interno' });
   }
+});
+
+/**
+ * GET /api/git-info — Branch corrente e ultimo commit
+ */
+router.get('/api/git-info', (_req, res) => {
+  const git = (args: string[]): string => {
+    try {
+      return execFileSync('git', args, { encoding: 'utf-8', timeout: 3000 }).trim();
+    } catch {
+      return '';
+    }
+  };
+
+  res.json({
+    branch: git(['rev-parse', '--abbrev-ref', 'HEAD']),
+    commit: git(['log', '-1', '--format=%h']),
+    commitMessage: git(['log', '-1', '--format=%s']),
+  });
 });

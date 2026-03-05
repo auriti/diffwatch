@@ -1,8 +1,8 @@
 /**
- * Header — stato connessione WS + contatore modifiche pending
+ * Header — stato connessione WS + contatore modifiche pending + git info
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface SessionStats {
   total: number;
@@ -12,6 +12,12 @@ interface SessionStats {
   files: number;
 }
 
+interface GitInfo {
+  branch: string;
+  commit: string;
+  commitMessage: string;
+}
+
 interface HeaderProps {
   connected: boolean;
   pendingCount: number;
@@ -19,11 +25,28 @@ interface HeaderProps {
 }
 
 export function Header({ connected, pendingCount, stats }: HeaderProps) {
+  const [gitInfo, setGitInfo] = useState<GitInfo | null>(null);
+
+  useEffect(() => {
+    fetch('/api/git-info')
+      .then(r => r.json())
+      .then((data: GitInfo) => {
+        if (data.branch) setGitInfo(data);
+      })
+      .catch(() => { /* ignora errori git-info */ });
+  }, []);
+
   return (
     <header className="dw-header">
       <div className="dw-header-left">
         <h1 className="dw-logo">diffwatch</h1>
         <span className="dw-subtitle">real-time diff viewer</span>
+        {gitInfo && (
+          <span className="dw-git-info" title={gitInfo.commitMessage}>
+            <span className="dw-git-branch">{gitInfo.branch}</span>
+            <span className="dw-git-commit">{gitInfo.commit}</span>
+          </span>
+        )}
       </div>
       <div className="dw-header-center">
         {stats && stats.total > 0 && (

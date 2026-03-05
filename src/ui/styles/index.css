@@ -74,6 +74,22 @@ html, body {
   color: var(--dw-muted);
 }
 
+.dw-git-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.dw-git-branch {
+  color: var(--dw-yellow);
+  font-weight: 600;
+}
+
+.dw-git-commit {
+  color: var(--dw-muted);
+}
+
 .dw-header-center {
   display: flex;
   align-items: center;
