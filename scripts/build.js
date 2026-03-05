@@ -30,6 +30,8 @@ const nodeCommon = {
     'fs', 'path', 'url', 'http', 'https', 'net', 'os', 'child_process',
     'crypto', 'stream', 'events', 'util', 'buffer', 'querystring',
     'readline', 'zlib', 'tty', 'assert',
+    // Moduli nativi npm — richiedono compilazione
+    'better-sqlite3',
   ],
 };
 

@@ -42,12 +42,14 @@
     "url": "https://github.com/auriti/diffwatch/issues"
   },
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "diff": "^7.0.0",
     "express": "^5.1.0",
     "open": "^10.1.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

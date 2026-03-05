@@ -218,8 +218,29 @@ export class SnapshotStore {
   }
 }
 
+/** Tipo comune per entrambi gli store */
+export type StoreInstance = SnapshotStore;
+
+/** Crea lo store appropriato (SQLite o in-memoria) */
+function createStore(): SnapshotStore {
+  if (process.env.DIFFWATCH_SQLITE === '1' || process.env.DIFFWATCH_SQLITE === 'true') {
+    try {
+      // Import dinamico per non richiedere better-sqlite3 se non usato
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { SqliteStore } = require('./sqlite-store.js') as { SqliteStore: new () => SnapshotStore };
+      const sqliteStore = new SqliteStore();
+      console.log('[diffwatch] Store: SQLite attivo');
+      return sqliteStore as unknown as SnapshotStore;
+    } catch (err) {
+      console.warn('[diffwatch] SQLite non disponibile, uso store in-memoria:', err);
+      return new SnapshotStore();
+    }
+  }
+  return new SnapshotStore();
+}
+
 /** Istanza singleton dello store */
-export const store = new SnapshotStore();
+export const store = createStore();
 
 /** Cleanup automatico ogni 5 minuti */
 const TTL_MS = parseInt(process.env.DIFFWATCH_TTL_MS || '3600000', 10);
