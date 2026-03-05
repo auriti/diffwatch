@@ -9,6 +9,7 @@ import { broadcast } from './websocket.js';
 import { createUnifiedDiff } from '../diff/engine.js';
 import { rollbackFile } from '../diff/rollback.js';
 import type { SnapshotRequest, AppliedRequest, RollbackRequest, AcceptRequest } from '../types.js';
+import { isPathAllowed } from './path-validator.js';
 
 export const router = Router();
 
@@ -22,6 +23,12 @@ router.post('/api/snapshot', (req, res) => {
 
     if (!body.filePath || body.contentBefore === undefined) {
       res.status(400).json({ error: 'filePath e contentBefore richiesti' });
+      return;
+    }
+
+    // Validazione sicurezza: blocca path traversal
+    if (!isPathAllowed(body.filePath)) {
+      res.status(403).json({ error: 'SECURITY: percorso file non consentito' });
       return;
     }
 
@@ -69,6 +76,12 @@ router.post('/api/applied', (req, res) => {
 
     if (!body.filePath || body.contentAfter === undefined) {
       res.status(400).json({ error: 'filePath e contentAfter richiesti' });
+      return;
+    }
+
+    // Validazione sicurezza: blocca path traversal
+    if (!isPathAllowed(body.filePath)) {
+      res.status(403).json({ error: 'SECURITY: percorso file non consentito' });
       return;
     }
 

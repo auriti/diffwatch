@@ -4,6 +4,7 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import type { FileSnapshot } from '../types.js';
+import { isPathAllowed } from '../server/path-validator.js';
 
 export interface RollbackResult {
   success: boolean;
@@ -20,6 +21,15 @@ export interface RollbackResult {
 export function rollbackFile(snapshot: FileSnapshot): RollbackResult {
   if (!snapshot.contentAfter) {
     return { success: false, conflict: false, message: 'Snapshot senza contentAfter' };
+  }
+
+  // Validazione sicurezza: blocca path traversal
+  if (!isPathAllowed(snapshot.filePath)) {
+    return {
+      success: false,
+      conflict: false,
+      message: 'SECURITY: percorso file non consentito per rollback',
+    };
   }
 
   try {
