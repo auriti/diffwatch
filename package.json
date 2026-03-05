@@ -4,7 +4,7 @@
   "description": "Visualizzatore diff in tempo reale per Claude Code CLI — web UI con accept/reject e rollback",
   "type": "module",
   "bin": {
-    "diffwatch": "./dist/cli.js"
+    "diffwatch": "dist/cli.js"
   },
   "main": "./dist/server.js",
   "files": [
