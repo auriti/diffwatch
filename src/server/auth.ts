@@ -49,23 +49,43 @@ export function readToken(): string | null {
 }
 
 /**
+ * Endpoint UI che non richiedono auth (azioni dal browser stesso).
+ * Sono sicure perché CORS limita l'accesso a localhost.
+ */
+const UI_ENDPOINTS = [
+  '/api/accept',
+  '/api/reject',
+  '/api/rollback',
+  '/api/accept-all',
+  '/api/reject-all',
+  '/api/changes',
+];
+
+/**
  * Middleware Express per autenticazione.
- * Richiede header: Authorization: Bearer <token>
- * Endpoint GET sono esclusi (read-only, nessun dato sensibile).
+ * - GET/OPTIONS: sempre pubblici
+ * - Endpoint UI (accept, reject, rollback): pubblici (protetti da CORS)
+ * - Endpoint hook (snapshot, applied, review): richiedono Bearer token
  */
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
-  // GET requests sono pubbliche (read-only)
+  // GET e OPTIONS sono pubblici
   if (req.method === 'GET' || req.method === 'OPTIONS') {
     next();
     return;
   }
 
   if (!serverToken) {
-    // Se non c'è token configurato, passa (modalità sviluppo)
     next();
     return;
   }
 
+  // Endpoint UI: non richiedono token (CORS protegge da origini esterne)
+  if (UI_ENDPOINTS.some(ep => req.path === ep || req.path.startsWith('/api/review/'))) {
+    next();
+    return;
+  }
+
+  // Endpoint hook: richiedono Bearer token
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Unauthorized: token mancante' });
